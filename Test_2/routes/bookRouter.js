@@ -2,38 +2,45 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 
-const Dishes = require('../models/dishes');
+const Books = require('../models/books');
+const Genres = require('../models/genres');
 
-const dishRouter = express.Router();
+const bookRouter = express.Router();
 
-dishRouter.use(bodyParser.json());
+bookRouter.use(bodyParser.json());
 
-dishRouter.route('/')
+bookRouter.route('/')
 .get((req,res,next) => {
-    Dishes.find({})
-    .then((dishes) => {
+    let filter = {};
+    if (req.query.price) {
+        filter.price = { $lt: Number(req.query.price) }; // Convert price to number
+    }
+    Books.find(filter)
+//   Books.find({})
+//   .populate('genre') // Populate genre details
+    .then((books) => {
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
-        res.json(dishes);
+        res.json(books);
     }, (err) => next(err))
     .catch((err) => next(err));
 })
 .post((req, res, next) => {
-    Dishes.create(req.body)
-    .then((dish) => {
-        console.log('Dish Created ', dish);
+  Books.create(req.body)
+    .then((book) => {
+        console.log('Book Created ', book);
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
-        res.json(dish);
+        res.json(book);
     }, (err) => next(err))
     .catch((err) => next(err));
 })
 .put((req, res, next) => {
     res.statusCode = 403;
-    res.end('PUT operation not supported on /dishes');
+    res.end('PUT operation not supported on /books');
 })
 .delete((req, res, next) => {
-    Dishes.remove({})
+  Books.remove({})
     .then((resp) => {
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
@@ -42,33 +49,34 @@ dishRouter.route('/')
     .catch((err) => next(err));    
 });
 
-dishRouter.route('/:dishId')
+bookRouter.route('/:bookId')
 .get((req,res,next) => {
-    Dishes.findById(req.params.dishId)
-    .then((dish) => {
+    Books.findById(req.params.bookId)
+    // .populate('genre') // Populate genre details
+    .then((book) => {
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
-        res.json(dish);
+        res.json(book);
     }, (err) => next(err))
     .catch((err) => next(err));
 })
 .post((req, res, next) => {
     res.statusCode = 403;
-    res.end('POST operation not supported on /dishes/'+ req.params.dishId);
+    res.end('POST operation not supported on /Books/'+ req.params.bookId);
 })
 .put((req, res, next) => {
-    Dishes.findByIdAndUpdate(req.params.dishId, {
+    Books.findByIdAndUpdate(req.params.bookId, {
         $set: req.body
     }, { new: true })
-    .then((dish) => {
+    .then((book) => {
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
-        res.json(dish);
+        res.json(book);
     }, (err) => next(err))
     .catch((err) => next(err));
 })
 .delete((req, res, next) => {
-    Dishes.findByIdAndDelete(req.params.dishId)
+    Books.findByIdAndDelete(req.params.bookId)
     .then((resp) => {
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
@@ -77,17 +85,17 @@ dishRouter.route('/:dishId')
     .catch((err) => next(err));
 });
 
-dishRouter.route('/:dishId/comments')
+bookRouter.route('/:bookId/comments')
 .get((req,res,next) => {
-    Dishes.findById(req.params.dishId)
-    .then((dish) => {
-        if (dish != null) {
+    Books.findById(req.params.bookId)
+    .then((book) => {
+        if (book != null) {
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
-            res.json(dish.comments);
+            res.json(book.comments);
         }
         else {
-            err = new Error('Dish ' + req.params.dishId + ' not found');
+            err = new Error('Book ' + req.params.bookId + ' not found');
             err.status = 404;
             return next(err);
         }
@@ -95,19 +103,19 @@ dishRouter.route('/:dishId/comments')
     .catch((err) => next(err));
 })
 .post((req, res, next) => {
-    Dishes.findById(req.params.dishId)
-    .then((dish) => {
-        if (dish != null) {
-            dish.comments.push(req.body);
-            dish.save()
-            .then((dish) => {
+    Books.findById(req.params.bookId)
+    .then((book) => {
+        if (book != null) {
+            book.comments.push(req.body);
+            book.save()
+            .then((book) => {
                 res.statusCode = 200;
                 res.setHeader('Content-Type', 'application/json');
-                res.json(dish);                
+                res.json(book);                
             }, (err) => next(err));
         }
         else {
-            err = new Error('Dish ' + req.params.dishId + ' not found');
+            err = new Error('book ' + req.params.bookId + ' not found');
             err.status = 404;
             return next(err);
         }
@@ -116,35 +124,42 @@ dishRouter.route('/:dishId/comments')
 })
 .put((req, res, next) => {
     res.statusCode = 403;
-    res.end('PUT operation not supported on /dishes/'
-        + req.params.dishId + '/comments');
+    res.end('PUT operation not supported on /Books/'
+        + req.params.bookId + '/comments');
 })
 .delete((req, res, next) => {
-    Dishes.findById(req.params.dishId)
-    .then((dish) => {
-        if (dish != null) {
-            for (var i = (dish.comments.length -1); i >= 0; i--) {
-                dish.comments.id(dish.comments[i]._id).remove();
-            }
-            dish.save()
-            .then((dish) => {
-                res.statusCode = 200;
-                res.setHeader('Content-Type', 'application/json');
-                res.json(dish);                
-            }, (err) => next(err));
-        }
-        else {
-            err = new Error('Dish ' + req.params.dishId + ' not found');
-            err.status = 404;
-            return next(err);
-        }
+    // Books.findById(req.params.bookId)
+    // .then((book) => {
+    //     if (book != null) {
+    //         for (var i = (book.comments.length -1); i >= 0; i--) {
+    //             book.comments.id(book.comments[i]._id).remove();
+    //         }
+    //         book.save()
+    //         .then((book) => {
+    //             res.statusCode = 200;
+    //             res.setHeader('Content-Type', 'application/json');
+    //             res.json(book);                
+    //         }, (err) => next(err));
+    //     }
+    //     else {
+    //         err = new Error('book ' + req.params.bookId + ' not found');
+    //         err.status = 404;
+    //         return next(err);
+    //     }
+    // }, (err) => next(err))
+    // .catch((err) => next(err));    
+    Books.deleteMany({})
+    .then((resp) => {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.json(resp);
     }, (err) => next(err))
-    .catch((err) => next(err));    
+    .catch((err) => next(err));   
 });
 
-dishRouter.route('/:dishId/comments/:commentId')
+bookRouter.route('/:bookId/comments/:commentId')
 .get((req,res,next) => {
-    Dishes.findById(req.params.dishId)
+    Books.findById(req.params.bookId)
     .then((dish) => {
         if (dish != null && dish.comments.id(req.params.commentId) != null) {
             res.statusCode = 200;
@@ -152,7 +167,7 @@ dishRouter.route('/:dishId/comments/:commentId')
             res.json(dish.comments.id(req.params.commentId));
         }
         else if (dish == null) {
-            err = new Error('Dish ' + req.params.dishId + ' not found');
+            err = new Error('Dish ' + req.params.bookId + ' not found');
             err.status = 404;
             return next(err);
         }
@@ -166,28 +181,28 @@ dishRouter.route('/:dishId/comments/:commentId')
 })
 .post((req, res, next) => {
     res.statusCode = 403;
-    res.end('POST operation not supported on /dishes/'+ req.params.dishId
+    res.end('POST operation not supported on /Books/'+ req.params.bookId
         + '/comments/' + req.params.commentId);
 })
 .put((req, res, next) => {
-    Dishes.findById(req.params.dishId)
-    .then((dish) => {
-        if (dish != null && dish.comments.id(req.params.commentId) != null) {
+    Books.findById(req.params.bookId)
+    .then((book) => {
+        if (book != null && book.comments.id(req.params.commentId) != null) {
             if (req.body.rating) {
-                dish.comments.id(req.params.commentId).rating = req.body.rating;
+                book.comments.id(req.params.commentId).rating = req.body.rating;
             }
             if (req.body.comment) {
-                dish.comments.id(req.params.commentId).comment = req.body.comment;                
+                book.comments.id(req.params.commentId).comment = req.body.comment;                
             }
-            dish.save()
-            .then((dish) => {
+            book.save()
+            .then((book) => {
                 res.statusCode = 200;
                 res.setHeader('Content-Type', 'application/json');
-                res.json(dish);                
+                res.json(book);                
             }, (err) => next(err));
         }
-        else if (dish == null) {
-            err = new Error('Dish ' + req.params.dishId + ' not found');
+        else if (book == null) {
+            err = new Error('book ' + req.params.bookId + ' not found');
             err.status = 404;
             return next(err);
         }
@@ -200,19 +215,19 @@ dishRouter.route('/:dishId/comments/:commentId')
     .catch((err) => next(err));
 })
 .delete((req, res, next) => {
-    Dishes.findById(req.params.dishId)
-    .then((dish) => {
-        if (dish != null && dish.comments.id(req.params.commentId) != null) {
-            dish.comments.id(req.params.commentId).remove();
-            dish.save()
-            .then((dish) => {
+    Books.findById(req.params.bookId)
+    .then((book) => {
+        if (book != null && book.comments.id(req.params.commentId) != null) {
+            book.comments.pull(req.params.commentId);
+            book.save()
+            .then((book) => {
                 res.statusCode = 200;
                 res.setHeader('Content-Type', 'application/json');
-                res.json(dish);                
+                res.json(book);                
             }, (err) => next(err));
         }
-        else if (dish == null) {
-            err = new Error('Dish ' + req.params.dishId + ' not found');
+        else if (book == null) {
+            err = new Error('book ' + req.params.bookId + ' not found');
             err.status = 404;
             return next(err);
         }
@@ -226,4 +241,4 @@ dishRouter.route('/:dishId/comments/:commentId')
 });
 
 
-module.exports = dishRouter;
+module.exports = bookRouter;
